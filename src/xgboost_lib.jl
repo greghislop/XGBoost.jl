@@ -208,7 +208,6 @@ function xgboost(data, nrounds::Integer; label = Union{}, param = [], watchlist 
                 output = eval_set(bst, watchlist, i, feval = feval)
             end
             temp = parse(Float64, split(split(output,"eval-mlogloss:")[end],'\t')[1])
-            @show temp
             if bestSofar > temp
                 bestSoFarInt = i
                 bestSofar = temp
