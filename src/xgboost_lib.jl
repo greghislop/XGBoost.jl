@@ -194,14 +194,31 @@ function xgboost(data, nrounds::Integer; label = Union{}, param = [], watchlist 
     for itm in metrics
         XGBoosterSetParam(bst.handle, "eval_metric", string(itm))
     end
+    bestSofar = 1.0e99
+    bestSoFarInt = 0
     for i = 1:nrounds
         update(bst, 1, dtrain, obj=obj)
+
+        if !silent
+            output = eval_set(bst, watchlist, i, feval = feval)
+            @printf(stderr, "%s", output)
+        end
         if save_period != 0 && i%save_period == 0
+            if silent
+                output = eval_set(bst, watchlist, i, feval = feval)
+            end
+            temp = parse(Float64, split(split(output,"eval-mlogloss:")[end],'\t')[1])
+            @show temp
+            if bestSofar > temp
+                bestSoFarInt = i
+                bestSofar = temp
+            end
             XGBoost.save(bst, joinpath(model_dir, "$(i).model")) # call to xgboost C++ module fails to save model periodically so lets do it here
         end
-        if !silent
-            @printf(stderr, "%s", eval_set(bst, watchlist, i, feval = feval))
-        end
+    end
+    if bestSoFarInt > 0
+        bst = Booster(model_file = joinpath(model_dir, "$(bestSoFarInt).model"))
+        @printf(stderr, "%s", "Best model returned which occured at iteration $(bestSoFarInt)\n")
     end
     return bst
 end
